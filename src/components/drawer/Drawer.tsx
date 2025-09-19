@@ -677,7 +677,7 @@ function useTopBottomDrag(
       ref.lastY = currentY;
       ref.lastFrameTime = now;
 
-      // Vaul's approach: Check if we should drag before any other logic
+      // Check if we should drag before any other logic
       if (!ref.committed) {
         const moved = Math.abs(totalDeltaY);
         const movedX = Math.abs(totalDeltaX);
