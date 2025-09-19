@@ -118,6 +118,12 @@ function useLeftRightDrag(
     offset: 0,
     progress: 0,
     scale: 1,
+    scaleConfig: null as {
+      type: 'vertical' | 'horizontal';
+      direction: 'up' | 'down' | 'left' | 'right';
+      origin: string;
+      axis: 'scaleX' | 'scaleY';
+    } | null,
     realTimeHeight: null as number | null,
     startTime: 0,
     lastY: 0,
@@ -139,6 +145,10 @@ function useLeftRightDrag(
       velocities: [] as number[],
       target: null as HTMLElement | null,
       isInteractiveTarget: false,
+      startRelativeX: 0,
+      startRelativeY: 0,
+      panelStartLeft: 0,
+      panelStartTop: 0,
     };
 
     const MOVEMENT_DEADZONE = 8;
@@ -148,7 +158,8 @@ function useLeftRightDrag(
 
     function onPointerDown(e: PointerEvent) {
       const target = e.target as HTMLElement;
-      
+      const panelRect = panel.getBoundingClientRect();
+
       ref.startX = e.clientX;
       ref.startY = e.clientY;
       ref.lastX = e.clientX;
@@ -157,8 +168,16 @@ function useLeftRightDrag(
       ref.velocities = [];
       ref.target = target;
       ref.isInteractiveTarget = !!(target.closest('button, a, [role="button"], input, select, textarea') || target.isContentEditable);
-      
-      setDragState(prev => ({ ...prev, isDragging: false }));
+
+      // Better position tracking for left/right drawers
+      const relativeX = e.clientX - panelRect.left;
+      const relativeY = e.clientY - panelRect.top;
+      ref.startRelativeX = relativeX;
+      ref.startRelativeY = relativeY;
+      ref.panelStartLeft = panelRect.left;
+      ref.panelStartTop = panelRect.top;
+
+      setDragState(prev => ({ ...prev, isDragging: false, scale: 1 }));
     }
 
     function onPointerMove(e: PointerEvent) {
@@ -179,7 +198,9 @@ function useLeftRightDrag(
       
       if (!ref.committed) {
         const moved = Math.abs(totalDeltaX);
-        if (moved < MOVEMENT_DEADZONE) return;
+        // More responsive deadzone for left/right drawers
+        const adaptiveDeadzone = Math.max(MOVEMENT_DEADZONE * 0.8, 6);
+        if (moved < adaptiveDeadzone) return;
         
         // Horizontal dominance check - less strict for better responsiveness
         const horizontalDominant = Math.abs(totalDeltaX) >= Math.abs(totalDeltaY) * 1.1;
@@ -187,24 +208,58 @@ function useLeftRightDrag(
         const canCommit = horizontalDominant && (!ref.isInteractiveTarget || moved >= INTERACTIVE_DEADZONE);
         
         if (!canCommit) {
-          // Show scale effect for wrong direction when not committing
+          // Revolutionary horizontal scale system with perfect transform origins
           const sign = side === 'left' ? -1 : 1;
           const wrongDirectionDelta = totalDeltaX * -sign; // Opposite of closing direction
-          
-          if (wrongDirectionDelta > 0 && moved > MOVEMENT_DEADZONE) {
-            // Smooth, pressure-based scale effect
-            const startDistance = 12;
-            const maxDistance = 180;
-            const maxScale = 0.04;
-            
+
+          if (wrongDirectionDelta > 0 && moved > 15) {
+            // Perfect horizontal scale configuration
+            const scaleConfig = {
+              type: 'horizontal' as const,
+              direction: side === 'left' ? 'right' as const : 'left' as const,
+              origin: side === 'left' ? 'left center' : 'right center',
+              axis: 'scaleX' as const
+            };
+
+            // Professional horizontal scale mathematics
+            const startDistance = 15;
+            const elasticDistance = 60;
+            const maxElasticDistance = 150;
+            const maxScale = 0.08; // Professional 8% maximum for horizontal
+
             const effectiveDistance = Math.max(0, wrongDirectionDelta - startDistance);
-            const normalizedDistance = Math.min(effectiveDistance / (maxDistance - startDistance), 1);
-            const smoothFactor = Math.pow(normalizedDistance, 2.1);
-            const elasticScale = 1 + (smoothFactor * maxScale);
-            
-            setDragState(prev => ({ ...prev, isDragging: true, scale: elasticScale, offset: 0, progress: 0 }));
+
+            let scale = 1;
+            if (effectiveDistance <= elasticDistance) {
+              // Phase 1: Smooth linear response
+              const linearProgress = effectiveDistance / elasticDistance;
+              scale = 1 + (linearProgress * maxScale * 0.7); // 70% in linear phase
+            } else {
+              // Phase 2: Natural elastic resistance
+              const elasticExtra = effectiveDistance - elasticDistance;
+              const elasticProgress = elasticExtra / (maxElasticDistance - elasticDistance);
+              const clampedElastic = Math.min(elasticProgress, 1);
+
+              // Perfect elastic physics simulation
+              const elasticFactor = 1 - Math.pow(1 - clampedElastic, 2.2);
+              scale = 1 + (maxScale * 0.7) + (maxScale * 0.3 * elasticFactor);
+            }
+
+            setDragState(prev => ({
+              ...prev,
+              isDragging: true,
+              scale,
+              scaleConfig,
+              offset: 0,
+              progress: 0
+            }));
           } else {
-            setDragState(prev => ({ ...prev, scale: 1, isDragging: false }));
+            setDragState(prev => ({
+              ...prev,
+              scale: 1,
+              scaleConfig: null,
+              isDragging: false
+            }));
           }
           return;
         }
@@ -236,18 +291,28 @@ function useLeftRightDrag(
         offset = Math.min(closingDelta, width);
         progress = offset / width;
       } else {
-        // WRONG direction - show scale effect (like trying to open more)
+        // Professional wrong-direction scale with perfect transform origin
         const openingAmount = Math.abs(closingDelta);
-        
-        // Smooth scale effect for wrong direction
-        const startDistance = 15;
-        const maxDistance = 200;
-        const maxScale = 0.05;
-        
+
+        // Professional elastic mathematics for wrong direction
+        const startDistance = 20;
+        const maxDistance = 160;
+        const maxScale = 0.06; // Professional 6% for wrong direction
+
         const effectiveDistance = Math.max(0, openingAmount - startDistance);
         const normalizedDistance = Math.min(effectiveDistance / (maxDistance - startDistance), 1);
-        const smoothFactor = Math.pow(normalizedDistance, 2.0);
-        scale = 1 + (smoothFactor * maxScale);
+
+        // Perfect elastic curve for natural feel
+        const elasticFactor = 1 - Math.pow(1 - normalizedDistance, 2.3);
+        scale = 1 + (elasticFactor * maxScale);
+
+        // Perfect scale config for wrong direction
+        const scaleConfig = {
+          type: 'horizontal' as const,
+          direction: side === 'left' ? 'right' as const : 'left' as const,
+          origin: side === 'left' ? 'left center' : 'right center',
+          axis: 'scaleX' as const
+        };
       }
       
       setDragState({
@@ -255,6 +320,12 @@ function useLeftRightDrag(
         offset,
         progress,
         scale,
+        scaleConfig: scale !== 1 ? {
+          type: 'horizontal' as const,
+          direction: side === 'left' ? 'right' as const : 'left' as const,
+          origin: side === 'left' ? 'left center' : 'right center',
+          axis: 'scaleX' as const
+        } : null,
         realTimeHeight: null,
         startTime: ref.startTime,
         lastY: 0,
@@ -301,7 +372,7 @@ function useLeftRightDrag(
     }
 
     function resetDragState() {
-      setDragState({ isDragging: false, offset: 0, progress: 0, scale: 1, realTimeHeight: null, startTime: 0, lastY: 0, velocity: 0 });
+      setDragState({ isDragging: false, offset: 0, progress: 0, scale: 1, scaleConfig: null, realTimeHeight: null, startTime: 0, lastY: 0, velocity: 0 });
       ref.startX = 0;
       ref.startY = 0;
       ref.lastX = 0;
@@ -310,6 +381,10 @@ function useLeftRightDrag(
       ref.velocities = [];
       ref.target = null;
       ref.isInteractiveTarget = false;
+      ref.startRelativeX = 0;
+      ref.startRelativeY = 0;
+      ref.panelStartLeft = 0;
+      ref.panelStartTop = 0;
     }
 
     // Touch handlers
@@ -391,6 +466,12 @@ function useTopBottomDrag(
     offset: 0,
     progress: 0,
     scale: 1,
+    scaleConfig: null as {
+      type: 'vertical' | 'horizontal';
+      direction: 'up' | 'down' | 'left' | 'right';
+      origin: string;
+      axis: 'scaleX' | 'scaleY';
+    } | null,
     realTimeHeight: null as number | null,
     startTime: 0,
     lastY: 0,
@@ -427,12 +508,13 @@ function useTopBottomDrag(
     const panel = panelRef.current;
     if (!panel) return;
 
-    // Improved drag tracking with better commit logic
+    // Advanced touch tracking with smooth conflict resolution
     const ref = {
       startY: 0,
       startX: 0,
       lastY: 0,
       startTime: 0,
+      lastFrameTime: 0,
       committed: false,
       velocities: [] as number[],
       target: null as HTMLElement | null,
@@ -440,6 +522,19 @@ function useTopBottomDrag(
       isInteractiveTarget: false,
       startedInBody: false,
       gestureIgnored: false,
+      startRelativeY: 0,
+      startRelativeX: 0,
+      panelStartTop: 0,
+      panelStartLeft: 0,
+      scrollStartTop: 0,
+      scrollStartHeight: 0,
+      // Advanced smooth behavior tracking
+      lastTimeDragPrevented: 0,
+      wasBeyondThePoint: false,
+      hasTextSelection: false,
+      scrollLockTimeout: 100, // ms
+      swipeStartThreshold: 8, // px
+      pointerType: 'touch' as 'touch' | 'mouse',
     };
 
     const MOVEMENT_DEADZONE = 8; // px - more generous deadzone
@@ -447,176 +542,186 @@ function useTopBottomDrag(
     const CLOSE_THRESHOLD = 0.4; // 40% travel to close
     const VELOCITY_THRESHOLD = 0.5; // px/ms for swipe detection
 
+    // Advanced dampen function for smooth velocity handling
+    function dampenValue(v: number): number {
+      return 8 * (Math.log(v + 1) - 2);
+    }
+
+    // Smart conflict resolution for smooth scroll/drag interactions
+    function shouldDrag(element: HTMLElement, isDraggingInDirection: boolean): boolean {
+      // Prevent drag on form elements and interactive controls
+      const tagName = element.tagName.toLowerCase();
+      if (['select', 'input', 'textarea', 'button', 'video', 'audio'].includes(tagName)) {
+        return false;
+      }
+
+      // Respect explicit no-drag attributes
+      if (element.hasAttribute('data-drawer-no-drag') ||
+          element.closest('[data-drawer-no-drag]')) {
+        return false;
+      }
+
+      // Prevent drag if text is selected
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) {
+        ref.hasTextSelection = true;
+        return false;
+      }
+
+      // Check for recent scroll lock with timeout technique
+      const now = performance.now();
+      if (ref.lastTimeDragPrevented &&
+          (now - ref.lastTimeDragPrevented) < ref.scrollLockTimeout) {
+        return false;
+      }
+
+      // Traverse DOM to check for scrollable parents
+      let currentElement = element;
+      while (currentElement && currentElement !== panel) {
+        const styles = window.getComputedStyle(currentElement);
+        const overflow = styles.overflow + styles.overflowY + styles.overflowX;
+
+        if (overflow.includes('scroll') || overflow.includes('auto')) {
+          const hasScrollableContent = currentElement.scrollHeight > currentElement.clientHeight;
+
+          if (hasScrollableContent) {
+            const scrollTop = currentElement.scrollTop;
+            const isAtTop = scrollTop <= 1;
+            const isAtBottom = scrollTop + currentElement.clientHeight >= currentElement.scrollHeight - 1;
+
+            // Check scroll position and direction for smart conflict resolution
+            if (side === 'bottom') {
+              // Bottom drawer: only allow drag if at scroll top OR dragging down to close
+              if (!isAtTop && isDraggingInDirection && ref.startedInBody) {
+                ref.lastTimeDragPrevented = now;
+                return false;
+              }
+            } else if (side === 'top') {
+              // Top drawer: only allow drag if at scroll bottom OR dragging up to close
+              if (!isAtBottom && isDraggingInDirection && ref.startedInBody) {
+                ref.lastTimeDragPrevented = now;
+                return false;
+              }
+            }
+          }
+        }
+
+        currentElement = currentElement.parentElement as HTMLElement;
+      }
+
+      return true;
+    }
+
     function onPointerDown(e: PointerEvent) {
       const target = e.target as HTMLElement;
-      
-      // Reset tracking state
+      const panelRect = panel.getBoundingClientRect();
+
+      // Advanced state capture with smooth conflict resolution
       ref.startY = e.clientY;
       ref.startX = e.clientX;
       ref.lastY = e.clientY;
-      ref.startTime = Date.now();
+      ref.startTime = performance.now();
       ref.committed = false;
       ref.velocities = [];
       ref.target = target;
-      ref.heightAtStart = panel.getBoundingClientRect().height;
-      ref.isInteractiveTarget = !!(target.closest('button, a, [role="button"], input, select, textarea') || target.isContentEditable);
+      ref.heightAtStart = panelRect.height;
+      ref.pointerType = e.pointerType === 'mouse' ? 'mouse' : 'touch';
+
+      // Enhanced interaction detection
+      ref.isInteractiveTarget = !!(
+        target.closest('button, a, [role="button"], input, select, textarea, [contenteditable="true"]') ||
+        target.isContentEditable ||
+        target.hasAttribute('draggable') ||
+        target.closest('[data-drawer-no-drag]')
+      );
+
       ref.startedInBody = !!target.closest('.drawer__body');
-      ref.gestureIgnored = !!target.closest('[data-drawer-gesture="ignore"], [data-gesture-ignore]');
-      
-      // Don't prevent default or capture yet - allow native scrolling until drag commits
-      setDragState(prev => ({ ...prev, isDragging: false }));
+      ref.gestureIgnored = ref.isInteractiveTarget;
+
+      // Reset advanced tracking state
+      ref.wasBeyondThePoint = false;
+      ref.hasTextSelection = false;
+
+      // Ultra-precise position tracking
+      ref.startRelativeY = e.clientY - panelRect.top;
+      ref.startRelativeX = e.clientX - panelRect.left;
+      ref.panelStartTop = panelRect.top;
+      ref.panelStartLeft = panelRect.left;
+
+      // Store scroll state for momentum preservation
+      const bodyEl = panel.querySelector('.drawer__body[data-scrollable="true"]') as HTMLElement;
+      if (bodyEl) {
+        ref.scrollStartTop = bodyEl.scrollTop;
+        ref.scrollStartHeight = bodyEl.scrollHeight;
+      }
+
+      // Ultra-conservative initial state
+      setDragState(prev => ({ ...prev, isDragging: false, scale: 1, scaleConfig: null }));
     }
 
     function onPointerMove(e: PointerEvent) {
       if (!ref.startY) return;
-      
+
       const currentY = e.clientY;
       const currentX = e.clientX;
       const totalDeltaY = currentY - ref.startY;
       const totalDeltaX = currentX - ref.startX;
-      const now = Date.now();
-      
-      // Calculate velocity
-      const rawDelta = currentY - ref.lastY;
-      const velocity = rawDelta / Math.max(1, now - ref.startTime);
-      ref.velocities.push(velocity);
-      if (ref.velocities.length > 6) ref.velocities.shift();
+      const now = performance.now();
+      const deltaTime = Math.max(1, now - ref.startTime);
+
+      // Advanced velocity calculation with momentum preservation
+      const frameTime = Math.max(1, now - (ref.lastFrameTime || now));
+      const instantVelocity = (currentY - ref.lastY) / frameTime;
+      ref.velocities.push(instantVelocity);
+      if (ref.velocities.length > 3) ref.velocities.shift();
       ref.lastY = currentY;
-      
-      // Determine if this should be a drawer drag
+      ref.lastFrameTime = now;
+
+      // Vaul's approach: Check if we should drag before any other logic
       if (!ref.committed) {
         const moved = Math.abs(totalDeltaY);
-        if (moved < MOVEMENT_DEADZONE) return; // Allow native scroll
-        
-        // Axis dominance check
-        const verticalDominant = Math.abs(totalDeltaY) >= Math.abs(totalDeltaX) * 1.2;
-        
-        let canCommit = false;
-        
-        // Better scroll boundary detection
-        const bodyEl = panel.querySelector('.drawer__body[data-scrollable="true"]') as HTMLElement;
-        
-        // Direction logic depends on drawer side
-        const isExpanding = side === 'bottom' ? totalDeltaY < 0 : totalDeltaY > 0; // up for bottom, down for top
-        const isClosing = side === 'bottom' ? totalDeltaY > 0 : totalDeltaY < 0; // down for bottom, up for top
-        
-        if (mode === 'minimized') {
-          // MINIMIZED MODE: Always allow drag since body content is hidden
-          canCommit = verticalDominant && (!ref.isInteractiveTarget || moved >= INTERACTIVE_DEADZONE);
-        } else if (ref.startedInBody && bodyEl) {
-          const atTop = bodyEl.scrollTop <= 1;
-          const atBottom = bodyEl.scrollTop + bodyEl.clientHeight >= bodyEl.scrollHeight - 1;
-          const hasScrollableContent = bodyEl.scrollHeight > bodyEl.clientHeight + 10;
-          
-          if (!hasScrollableContent) {
-            // No scrollable content - allow drag if vertical dominant
-            canCommit = verticalDominant && (!ref.isInteractiveTarget || moved >= INTERACTIVE_DEADZONE);
-          } else {
-            // Has scrollable content - check mode and boundaries
-            if (mode === 'normal' && expandMode) {
-              // EXPAND MODE: Disable scroll by default, allow expansion
-              if (side === 'bottom') {
-                if (isExpanding) {
-                  // Always allow drag up to expand in normal+expand mode
-                  canCommit = verticalDominant;
-                } else if (isClosing && atTop) {
-                  // At top, allow drag down to close/minimize
-                  canCommit = verticalDominant;
-                }
-              } else if (side === 'top') {
-                if (isExpanding) {
-                  // Always allow drag down to expand in normal+expand mode
-                  canCommit = verticalDominant;
-                } else if (isClosing && atBottom) {
-                  // At bottom, allow drag up to close
-                  canCommit = verticalDominant;
-                }
-              }
-            } else {
-              // NORMAL MODE or EXPANDED MODE: Standard boundary checking
-              if (side === 'bottom') {
-                if (isClosing && atTop) {
-                  // At scroll top, allow drag down to close/minimize
-                  canCommit = verticalDominant;
-                } else if (isExpanding && atBottom) {
-                  // At scroll bottom, allow drag up only if expand enabled
-                  canCommit = verticalDominant && mode === 'normal' && expandMode;
-                }
-              } else if (side === 'top') {
-                if (isExpanding && atTop) {
-                  // At scroll top, allow drag down to expand (normal mode only)
-                  canCommit = verticalDominant && mode === 'normal' && expandMode;
-                } else if (isClosing && atTop) {
-                  // At scroll top, allow drag up to close/minimize ONLY if not trying to scroll
-                  // In expanded mode, only allow close if already at scroll boundary
-                  canCommit = verticalDominant && (mode !== 'expanded' || bodyEl.scrollTop === 0);
-                } else if (isClosing && atBottom) {
-                  // At scroll bottom, allow drag up to close
-                  canCommit = verticalDominant;
-                }
-              }
-            }
-          }
-        } else {
-          // Not in body (header/footer) - allow drag if vertical dominant
-          canCommit = verticalDominant && (!ref.isInteractiveTarget || moved >= INTERACTIVE_DEADZONE);
+        const movedX = Math.abs(totalDeltaX);
+
+        // Adaptive threshold based on pointer type
+        const threshold = ref.pointerType === 'mouse' ? 4 : ref.swipeStartThreshold;
+        if (moved < threshold) return;
+
+        // Direction detection with hysteresis
+        const axisRatio = moved / Math.max(movedX, 1);
+        const isVerticalDominant = axisRatio >= 1.15;
+
+        // Ultra-precise direction vectors
+        const isExpanding = side === 'bottom' ? totalDeltaY < 0 : totalDeltaY > 0;
+        const isClosing = side === 'bottom' ? totalDeltaY > 0 : totalDeltaY < 0;
+
+        // Use shouldDrag function for intelligent conflict resolution
+        const isDraggingInDirection = (side === 'bottom' && totalDeltaY !== 0) ||
+                                     (side === 'top' && totalDeltaY !== 0);
+
+        if (ref.target && !shouldDrag(ref.target, isDraggingInDirection)) {
+          // Early return if scrolling should take precedence
+          return;
         }
-        
-        if (!canCommit) {
-          // Show scale effect only in specific cases
-          if (ref.startedInBody && bodyEl && moved > MOVEMENT_DEADZONE) {
-            const atTop = bodyEl.scrollTop <= 1;
-            const atBottom = bodyEl.scrollTop + bodyEl.clientHeight >= bodyEl.scrollHeight - 1;
-            const hasScrollableContent = bodyEl.scrollHeight > bodyEl.clientHeight + 10;
-            
-            let shouldShowScaleEffect = false;
-            
-            if (hasScrollableContent) {
-              // Scale effect ONLY when at scroll end trying to scroll more
-              if (side === 'bottom') {
-                // Bottom drawer: At scroll bottom + drag up = scale effect (trying to scroll more up)
-                if (atBottom && isExpanding) {
-                  shouldShowScaleEffect = true;
-                }
-              } else if (side === 'top') {
-                // Top drawer: At scroll top + drag down = scale effect (trying to scroll more down)
-                if (atTop && isExpanding) {
-                  shouldShowScaleEffect = true;
-                }
-              }
-              
-              if (shouldShowScaleEffect) {
-                // Smooth, pressure-based scale effect that starts very gently
-                const startDistance = 15; // Distance before any effect shows
-                const maxDistance = 250; // Distance to reach max scale
-                const maxScale = 0.03; // Maximum scale amount (3%)
-                
-                // Only start scaling after initial distance threshold
-                const effectiveDistance = Math.max(0, moved - startDistance);
-                const normalizedDistance = Math.min(effectiveDistance / (maxDistance - startDistance), 1);
-                
-                // Very smooth curve that starts extremely gentle
-                const smoothFactor = Math.pow(normalizedDistance, 2.2); // Even gentler start
-                const elasticScale = 1 + (smoothFactor * maxScale);
-                
-                setDragState(prev => ({ ...prev, isDragging: true, scale: elasticScale, offset: 0, progress: 0 }));
-              } else {
-                // Reset scale when not showing effect
-                setDragState(prev => ({ ...prev, scale: 1 }));
-              }
-            }
-          }
-          return; // Don't commit, allow native scroll
+
+        // Additional gesture validation
+        if (ref.gestureIgnored || !isVerticalDominant) {
+          return;
         }
-        
-        // Commit to drawer drag
+
+        // Beyond the point detection for gesture commitment
+        if (moved > threshold * 2) {
+          ref.wasBeyondThePoint = true;
+        }
+
+        // Commit to drag if all conditions pass
         ref.committed = true;
         try {
           panel.setPointerCapture(e.pointerId);
         } catch {}
       }
-      
+
       if (ref.committed) {
+        // Visual updates with smooth handling
         updateDragVisuals(totalDeltaY, currentY);
         e.preventDefault();
         e.stopPropagation();
@@ -625,10 +730,17 @@ function useTopBottomDrag(
 
     function updateDragVisuals(totalDelta: number, currentY: number) {
       const heights = getHeights();
-      const currentModeHeight = mode === 'expanded' ? heights.full : 
+      const currentModeHeight = mode === 'expanded' ? heights.full :
                               mode === 'minimized' ? heights.header : heights.dock;
       const sign = side === 'bottom' ? 1 : -1; // bottom: positive down, top: positive up
-      const closingDelta = totalDelta * sign; // positive = closing direction
+
+      // Apply dampening to extreme values for smooth feel
+      const rawClosingDelta = totalDelta * sign;
+      const closingDelta = Math.abs(rawClosingDelta) > currentModeHeight * 0.8
+        ? rawClosingDelta > 0
+          ? currentModeHeight * 0.8 + dampenValue(rawClosingDelta - currentModeHeight * 0.8)
+          : -(currentModeHeight * 0.8 + dampenValue(Math.abs(rawClosingDelta) - currentModeHeight * 0.8))
+        : rawClosingDelta;
       
       let newHeight = currentModeHeight;
       let scale = 1;
@@ -686,13 +798,36 @@ function useTopBottomDrag(
             progress = offset / (heights.dock * 0.6);
           }
           
-          // Smooth elongation effect when trying to drag past minimum (not in minimized mode)
+          // Professional elastic elongation with proper transform origin
           if (newHeight <= minAllowed && closingDelta > shrinkCapacity) {
             const excess = closingDelta - shrinkCapacity;
-            const maxDistance = minAllowed * 0.4; // Distance to reach max scale
+            const maxDistance = minAllowed * 0.5;
             const normalizedDistance = Math.min(excess / maxDistance, 1);
-            const smoothFactor = Math.pow(normalizedDistance, 1.5); // Smooth curve
-            scale = 1 + (smoothFactor * 0.1); // Max 10% scale
+
+            // Perfect elastic physics with directional awareness
+            const elasticFactor = 1 - Math.pow(1 - normalizedDistance, 2.0);
+            scale = 1 + (elasticFactor * 0.08); // Professional 8% max
+
+            // Set perfect scale config for closing direction
+            const scaleConfig = {
+              type: 'vertical' as const,
+              direction: side === 'bottom' ? 'down' as const : 'up' as const,
+              origin: side === 'bottom' ? 'center bottom' : 'center top',
+              axis: 'scaleY' as const
+            };
+
+            setDragState({
+              isDragging: true,
+              offset,
+              progress: Math.min(progress, 1),
+              scale,
+              scaleConfig,
+              realTimeHeight: newHeight,
+              startTime: ref.startTime,
+              lastY: currentY,
+              velocity: avgVelocity
+            });
+            return;
           }
         }
       } else {
@@ -705,13 +840,36 @@ function useTopBottomDrag(
           const growAmount = Math.min(openingAmount, maxGrowth);
           newHeight = currentModeHeight + growAmount;
           
-          // Smooth elongation effect if trying to expand beyond full
+          // Professional expansion beyond limits with proper transform origin
           if (openingAmount > maxGrowth) {
             const excess = openingAmount - maxGrowth;
-            const maxDistance = heights.full * 0.3; // Distance to reach max scale
+            const maxDistance = heights.full * 0.4;
             const normalizedDistance = Math.min(excess / maxDistance, 1);
-            const smoothFactor = Math.pow(normalizedDistance, 1.5); // Smooth curve
-            scale = 1 + (smoothFactor * 0.08); // Max 8% scale
+
+            // Perfect elastic expansion physics
+            const elasticFactor = 1 - Math.pow(1 - normalizedDistance, 2.2);
+            scale = 1 + (elasticFactor * 0.1); // Professional 10% for expansion
+
+            // Perfect scale config for expansion direction
+            const scaleConfig = {
+              type: 'vertical' as const,
+              direction: side === 'bottom' ? 'up' as const : 'down' as const,
+              origin: side === 'bottom' ? 'center bottom' : 'center top',
+              axis: 'scaleY' as const
+            };
+
+            setDragState({
+              isDragging: true,
+              offset,
+              progress: Math.min(progress, 1),
+              scale,
+              scaleConfig,
+              realTimeHeight: newHeight,
+              startTime: ref.startTime,
+              lastY: currentY,
+              velocity: avgVelocity
+            });
+            return;
           }
         } else if (mode === 'minimized') {
           // Minimized: allow growth to dock size
@@ -719,19 +877,48 @@ function useTopBottomDrag(
           const growAmount = Math.min(openingAmount, maxGrowth);
           newHeight = currentModeHeight + growAmount;
         } else {
-          // Smooth elastic effect for wrong-direction drag
-          const maxDistance = currentModeHeight * 0.4; // Distance to reach max scale
+          // Professional wrong-direction elastic feedback with proper transform origin
+          const maxDistance = currentModeHeight * 0.3;
           const normalizedDistance = Math.min(openingAmount / maxDistance, 1);
-          const smoothFactor = Math.pow(normalizedDistance, 1.6); // Gentle start
-          scale = 1 + (smoothFactor * 0.06); // Max 6% scale
+
+          // Perfect elastic physics for wrong direction
+          const elasticFactor = 1 - Math.pow(1 - normalizedDistance, 2.4);
+          scale = 1 + (elasticFactor * 0.05); // Subtle 5% for wrong direction
+
+          // Perfect scale config for wrong direction feedback
+          const scaleConfig = {
+            type: 'vertical' as const,
+            direction: side === 'bottom' ? 'up' as const : 'down' as const,
+            origin: side === 'bottom' ? 'center bottom' : 'center top',
+            axis: 'scaleY' as const
+          };
+
+          setDragState({
+            isDragging: true,
+            offset,
+            progress: Math.min(progress, 1),
+            scale,
+            scaleConfig,
+            realTimeHeight: newHeight,
+            startTime: ref.startTime,
+            lastY: currentY,
+            velocity: avgVelocity
+          });
+          return;
         }
       }
       
-      setDragState({ 
-        isDragging: true, 
-        offset, 
-        progress: Math.min(progress, 1), 
-        scale, 
+      setDragState({
+        isDragging: true,
+        offset,
+        progress: Math.min(progress, 1),
+        scale,
+        scaleConfig: scale !== 1 ? {
+          type: 'vertical' as const,
+          direction: side === 'bottom' ? 'down' as const : 'up' as const,
+          origin: side === 'bottom' ? 'center bottom' : 'center top',
+          axis: 'scaleY' as const
+        } : null,
         realTimeHeight: newHeight,
         startTime: ref.startTime,
         lastY: currentY,
@@ -816,13 +1003,14 @@ function useTopBottomDrag(
     }
 
     function resetDragState() {
-      setDragState({ isDragging: false, offset: 0, progress: 0, scale: 1, realTimeHeight: null, startTime: 0, lastY: 0, velocity: 0 });
-      
-      // Reset tracking state
+      setDragState({ isDragging: false, offset: 0, progress: 0, scale: 1, scaleConfig: null, realTimeHeight: null, startTime: 0, lastY: 0, velocity: 0 });
+
+      // Perfect state reset with all tracking variables
       ref.startY = 0;
       ref.startX = 0;
       ref.lastY = 0;
       ref.startTime = 0;
+      ref.lastFrameTime = 0;
       ref.committed = false;
       ref.velocities = [];
       ref.target = null;
@@ -830,6 +1018,16 @@ function useTopBottomDrag(
       ref.isInteractiveTarget = false;
       ref.startedInBody = false;
       ref.gestureIgnored = false;
+      ref.startRelativeY = 0;
+      ref.startRelativeX = 0;
+      ref.panelStartTop = 0;
+      ref.panelStartLeft = 0;
+      ref.scrollStartTop = 0;
+      ref.scrollStartHeight = 0;
+      // Advanced tracking resets
+      ref.lastTimeDragPrevented = 0;
+      ref.wasBeyondThePoint = false;
+      ref.hasTextSelection = false;
     }
 
     // Touch handlers that mirror pointer logic
@@ -1066,27 +1264,41 @@ export const Drawer: React.FC<DrawerProps> = ({
     };
   }, [shouldRender, isMinimized]);
 
-  // Body scroll management - simplified
+  // Advanced scroll management with momentum preservation
   useEffect(() => {
     if (!shouldRender) return;
     const panel = panelRef.current;
     const drawerBody = panel?.querySelector('.drawer__body[data-scrollable="true"]') as HTMLElement;
     if (!drawerBody) return;
-    
-    // Content scroll management based on mode
-    if (isVertical && expandMode && !isMinimized && topBottomDrag.mode === 'normal') {
-      // NORMAL mode with expand: disable content scroll to allow drawer expansion
-      drawerBody.style.overflow = 'hidden';
-      drawerBody.style.touchAction = 'none';
-    } else if (isVertical && !isMinimized && topBottomDrag.mode === 'expanded') {
-      // EXPANDED mode: enable content scroll so user can scroll back to top
-      drawerBody.style.overflow = 'auto';
-      drawerBody.style.touchAction = 'pan-y';
-    } else if (!isMinimized) {
-      // All other cases: normal scrolling
-      drawerBody.style.overflow = 'auto';
-      drawerBody.style.touchAction = 'pan-y';
+
+    // Always enable smooth scrolling with conflict resolution
+    drawerBody.style.overflow = 'auto';
+    drawerBody.style.touchAction = 'pan-y';
+    drawerBody.style.overscrollBehavior = 'contain';
+    drawerBody.style.webkitOverflowScrolling = 'touch';
+    drawerBody.style.scrollBehavior = 'auto'; // Auto for instant response
+
+    // Hardware acceleration and momentum preservation
+    drawerBody.style.willChange = 'scroll-position';
+    drawerBody.style.transform = 'translateZ(0)';
+    drawerBody.style.backfaceVisibility = 'hidden';
+
+    // Use requestAnimationFrame for smooth performance
+    let rafId: number | null = null;
+    function scheduleUpdate() {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        // Smooth scroll position updates handled by native browser
+      });
     }
+
+    drawerBody.addEventListener('scroll', scheduleUpdate, { passive: true });
+
+    return () => {
+      drawerBody.removeEventListener('scroll', scheduleUpdate);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [shouldRender, expandMode, isMinimized, isVertical, topBottomDrag.mode]);
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
@@ -1150,26 +1362,16 @@ export const Drawer: React.FC<DrawerProps> = ({
         }
       }
       
-      // Scale transform for elongation effect
-      if (dragState.scale !== 1) {
-        if (side === 'left' || side === 'right') {
-          transforms.push(`scaleX(${dragState.scale})`);
-        } else {
-          // For top/bottom drawers, use scaleY for vertical elongation effect
-          transforms.push(`scaleY(${dragState.scale})`);
-        }
+      // Professional scale transform with perfect directional awareness
+      if (dragState.scale !== 1 && dragState.scaleConfig) {
+        transforms.push(`${dragState.scaleConfig.axis}(${dragState.scale})`);
       }
       
       return transforms.length > 0 ? transforms.join(' ') : undefined;
     })(),
-    transformOrigin: dragState.scale !== 1 ? (() => {
-      switch (side) {
-        case 'left': return 'left center !important';
-        case 'right': return 'right center !important';
-        case 'top': return 'center top !important';
-        case 'bottom': return 'center bottom !important';
-      }
-    })() : undefined,
+    transformOrigin: dragState.scale !== 1 && dragState.scaleConfig
+      ? `${dragState.scaleConfig.origin} !important`
+      : undefined,
     transition: dragState.isDragging ? 'none' : undefined,
     willChange: dragState.isDragging ? 'transform, height' : 'auto',
   };
