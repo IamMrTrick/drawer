@@ -1,0 +1,41 @@
+{
+  "name": "blocx",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@hookform/resolvers": "^5.2.1",
+    "@tanstack/react-query": "^5.85.5",
+    "axios": "^1.11.0",
+    "clsx": "^2.1.1",
+    "immer": "^10.1.1",
+    "js-cookie": "^3.0.5",
+    "lucide-react": "^0.541.0",
+    "next": "15.5.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-hook-form": "^7.62.0",
+    "recharts": "^3.1.2",
+    "sass": "^1.90.0",
+    "zod": "^4.1.5",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.0",
+    "typescript": "^5"
+  }
+}

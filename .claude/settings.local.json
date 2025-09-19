@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:miro.medium.com)",
+      "WebFetch(domain:i.ibb.co)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Read(C:\\Users\\User\\Desktop/**)",
+      "Bash(taskkill:*)",
+      "Bash(wmic process where:*)",
+      "Bash(npx @next/codemod@latest:*)",
+      "Bash(npm install)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\layout\\aside/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\ui\\nav\\dashboard-nav/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\layout\\aside/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\ui\\nav\\dashboard-nav/**)",
+      "WebSearch",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\header\\dashboard-header/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\app\\dashboard/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\ui\\theme-switcher/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\contexts/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\ui\\button/**)",
+      "Read(/C:\\Users\\User\\Desktop\\trixel-standard\\dashboard\\src\\components\\ui\\button/**)",
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(cat:*)",
+      "Bash(netstat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
