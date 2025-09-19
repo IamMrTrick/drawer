@@ -286,7 +286,6 @@ html.drawer-active {
 .drawer--expanded.drawer--side-top .drawer__panel,
 .drawer--expanded.drawer--side-bottom .drawer__panel {
   height: calc(100vh - 32px);
-  border-radius: 0;
 }
 
 /* MINIMIZED STATE: Header only */

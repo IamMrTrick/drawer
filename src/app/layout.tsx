@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import '@/components/drawer/Drawer.scss'
+import '@/components/drawer/Drawer.css'
 
 export const metadata: Metadata = {
   title: 'Drawer Component Test',
